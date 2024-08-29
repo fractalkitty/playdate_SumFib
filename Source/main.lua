@@ -887,41 +887,58 @@ end
 
 
 
+local previous_crank_position = playdate.getCrankPosition()
+local accumulated_crank_rotation = 0
+local crank_rotation_threshold = 360  -- Full rotation
 
 function update_selection_and_music()
-    local previous_index = selected_index
-    local crank_change = playdate.getCrankChange()
+    local current_crank_position = playdate.getCrankPosition()
+    local crank_delta = current_crank_position - previous_crank_position
 
-    if crank_change ~= 0 then
-        previous_index = selected_index  -- Store the previous index
-        
-        selected_index = selected_index + (crank_change > 0 and 1 or -1)
+    -- Normalize crank_delta to ensure it accounts for crossing the 0-degree mark
+    if crank_delta > 180 then
+        crank_delta = crank_delta - 360
+    elseif crank_delta < -180 then
+        crank_delta = crank_delta + 360
+    end
+
+    -- Accumulate the crank rotation
+    accumulated_crank_rotation = accumulated_crank_rotation + crank_delta
+    previous_crank_position = current_crank_position  -- Update for the next cycle
+
+    -- Check if we've reached a full rotation
+    if math.abs(accumulated_crank_rotation) >= crank_rotation_threshold then
+        -- Determine direction of the rotation and update selection
+        local previous_index = selected_index
+        selected_index = selected_index + (accumulated_crank_rotation > 0 and 1 or -1)
+
+        -- Wrap around if necessary
         if selected_index < 1 then
             selected_index = #scales
         elseif selected_index > #scales then
             selected_index = 1
         end
-        
-        -- Check if the selected scale has changed
-        if selected_index ~= previous_index then
-            -- Stop the current sound and cancel the previous timer
-            synth:stop()
-            if melody_timer then
-                melody_timer:remove()
-                melody_timer = nil
-            end
 
-            -- Change the music to the newly selected scale
-            the_scale = scale_mapping[selected_index]
-            local pisano_period = calculate_pisano_period(#the_scale)
-            local fib_mod_sequence = generate_fibonacci_modulo_sequence(#the_scale, pisano_period)
-            melody = map_to_scale(fib_mod_sequence, the_scale)
-            
-            current_note_index = 1  -- Reset the note index
-            -- play_next_note()  -- Start playing the new melody
+        -- Stop the current sound and cancel the previous timer
+        synth:stop()
+        if melody_timer then
+            melody_timer:remove()
+            melody_timer = nil
         end
+
+        -- Change the music to the newly selected scale
+        the_scale = scale_mapping[selected_index]
+        local pisano_period = calculate_pisano_period(#the_scale)
+        local fib_mod_sequence = generate_fibonacci_modulo_sequence(#the_scale, pisano_period)
+        melody = map_to_scale(fib_mod_sequence, the_scale)
+
+        current_note_index = 1  -- Reset the note index
+
+        -- Reset accumulated rotation after a full rotation
+        accumulated_crank_rotation = 0
     end
 end
+
 
 
 
