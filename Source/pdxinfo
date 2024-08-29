@@ -1,0 +1,7 @@
+name=SumFib
+author=Sophia Wood
+description=A Fibonacci tile game.
+bundleID=com.yourcompany.TemplateGame
+version=2.0
+buildNumber=100
+imagePath=SystemAssets
